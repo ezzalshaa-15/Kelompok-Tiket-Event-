@@ -1,103 +1,50 @@
 
-import datetime
-
-from flask import Blueprint, request, jsonify
-
-from repositori.json_repo import baca_data, simpan_data
-from layanan.event import daftar_event_dengan_sisa, cari_event
-from layanan.promo import validasi_promo
-from layanan.pemesanan import buat_pesanan_api
-from layanan.pembatalan import batalkan_pesanan
-from layanan.laporan import laporan_event
-
-api = Blueprint("api", __name__)
+def cari_event(data, id_event):
+    """Mencari event berdasarkan ID."""
+    for event in data.get("event", []):
+        if str(event.get("id")) == str(id_event):
+            return event
+    return None
 
 
-@api.route("/api/event")
-def api_event():
-    data = baca_data()
-    daftar = daftar_event_dengan_sisa(data)
+def hitung_sisa_kuota(data, event, nama_kategori):
+    """Menghitung sisa kuota berdasarkan pesanan yang tidak batal."""
+    kategori = event.get("kategori", {}).get(nama_kategori, {})
+    kuota = int(kategori.get("kuota", 0))
 
-    hasil = [
-        {
-            "id": event["id"],
-            "nama": event["nama"],
-            "tanggal": event["tanggal"],
-            "lokasi": event["lokasi"],
-            "sisa_kuota": event["sisa_kuota"],
-        }
-        for event in daftar
-    ]
-
-    return jsonify(hasil)
-
-
-@api.route("/api/promo/<kode>")
-def api_promo(kode):
-    data = baca_data()
-    tanggal = (
-        request.args.get("tanggal")
-        or datetime.date.today().isoformat()
+    terjual = sum(
+        int(pesanan.get("jumlah", 0))
+        for pesanan in data.get("pesanan", [])
+        if str(pesanan.get("event")) == str(event.get("id"))
+        and pesanan.get("kategori") == nama_kategori
+        and pesanan.get("status") != "batal"
     )
 
-    return jsonify(validasi_promo(data, kode, tanggal))
+    return max(0, kuota - terjual)
 
 
-@api.route("/api/pesan", methods=["POST"])
-def api_pesan():
-    data = baca_data()
-    body = request.get_json(silent=True) or {}
-    event = cari_event(data, body.get("event"))
+def daftar_event_dengan_sisa(data):
+    """Mengembalikan event dengan total sisa kuota."""
+    daftar = []
 
-    pesanan, error, status = buat_pesanan_api(
-        data,
-        event,
-        body,
-        datetime.date.today().isoformat(),
+    for event_asli in data.get("event", []):
+        event = event_asli.copy()
+
+        event["sisa_kuota"] = sum(
+            hitung_sisa_kuota(data, event, nama_kategori)
+            for nama_kategori in event.get("kategori", {})
+        )
+
+        daftar.append(event)
+
+    return daftar
+
+def hitung_terjual(data, event, nama_kategori):
+    """Menghitung tiket terjual untuk kategori tertentu."""
+    return sum(
+        int(pesanan.get("jumlah", 0))
+        for pesanan in data.get("pesanan", [])
+        if str(pesanan.get("event")) == str(event.get("id"))
+        and pesanan.get("kategori") == nama_kategori
+        and pesanan.get("status") != "batal"
     )
-
-    if error:
-        return jsonify(error), status
-
-    simpan_data(data)
-    return jsonify(pesanan), status
-
-
-@api.route("/api/batal", methods=["POST"])
-def api_batal():
-    data = baca_data()
-    body = request.get_json(silent=True) or {}
-    tanggal = (
-        body.get("tanggal")
-        or datetime.date.today().isoformat()
-    )
-
-    pesanan, error, status = batalkan_pesanan(
-        data,
-        body.get("kode"),
-        tanggal,
-    )
-
-    if error:
-        return jsonify(error), status
-
-    simpan_data(data)
-
-    return jsonify({
-        "kode": pesanan["kode"],
-        "status": "batal",
-        "refund": pesanan["refund"],
-    })
-
-
-@api.route("/api/laporan/<id_event>")
-def api_laporan(id_event):
-    data = baca_data()
-    event = cari_event(data, id_event)
-
-    if event is None:
-        return jsonify({
-            "error": "Event tidak ditemukan"
-        }), 404
-
-    return jsonify(laporan_event(data, event))
