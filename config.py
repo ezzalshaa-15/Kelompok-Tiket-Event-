@@ -1,0 +1,11 @@
+
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+DATA_FILE = BASE_DIR / "data.json"
+
+EARLY_BIRD_HARI = 30
+EARLY_BIRD_PERSEN = 15
+BIAYA_LAYANAN_PER_TIKET = 5000
+BATAS_TIKET_PER_PESANAN = 5
+REFUND_PENUH_MIN_HARI = 7
