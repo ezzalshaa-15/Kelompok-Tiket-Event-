@@ -39,12 +39,10 @@ def daftar_event_dengan_sisa(data):
 
     return daftar
 
-def hitung_terjual(data, event, nama_kategori):
-    """Menghitung tiket terjual untuk kategori tertentu."""
+def hitung_terjual(data, event_id, kategori):
     return sum(
         int(pesanan.get("jumlah", 0))
         for pesanan in data.get("pesanan", [])
-        if str(pesanan.get("event")) == str(event.get("id"))
-        and pesanan.get("kategori") == nama_kategori
-        and pesanan.get("status") != "batal"
+        if str(pesanan.get("event")) == str(event_id)
+        and pesanan.get("kategori") == kategori
     )
