@@ -10,7 +10,9 @@ def laporan_event(data, event):
     total_terjual = 0
 
     for nama_kat, kategori in event["kategori"].items():
-        terjual = hitung_terjual(data, event["id"], nama_kat)
+        terjual = hitung_terjual(
+            data, event["id"], nama_kat
+        )
 
         per_kategori[nama_kat] = {
             "terjual": terjual,
@@ -21,12 +23,14 @@ def laporan_event(data, event):
         total_terjual += terjual
 
     for pesanan in data["pesanan"]:
-        if pesanan["event"] == event["id"]:
+        if str(pesanan["event"]) == str(event["id"]):
             if pesanan["status"] == "lunas":
                 pendapatan += pesanan["total"]
             else:
                 batal += 1
-                pendapatan += pesanan["total"] - pesanan["refund"]
+                pendapatan += (
+                    pesanan["total"] - pesanan["refund"]
+                )
 
     okupansi = (
         round(total_terjual / total_kuota * 100, 1)

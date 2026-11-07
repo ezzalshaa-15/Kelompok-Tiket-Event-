@@ -7,24 +7,31 @@ def cari_event(data, id_event):
     return None
 
 
+def hitung_terjual(data, event_id, kategori):
+    """Menghitung tiket yang sudah lunas."""
+    return sum(
+        int(pesanan.get("jumlah", 0))
+        for pesanan in data.get("pesanan", [])
+        if str(pesanan.get("event")) == str(event_id)
+        and pesanan.get("kategori") == kategori
+        and pesanan.get("status") == "lunas"
+    )
+
+
 def hitung_sisa_kuota(data, event, nama_kategori):
-    """Menghitung sisa kuota berdasarkan pesanan yang tidak batal."""
+    """Menghitung sisa kuota tiket."""
     kategori = event.get("kategori", {}).get(nama_kategori, {})
     kuota = int(kategori.get("kuota", 0))
 
-    terjual = sum(
-        int(pesanan.get("jumlah", 0))
-        for pesanan in data.get("pesanan", [])
-        if str(pesanan.get("event")) == str(event.get("id"))
-        and pesanan.get("kategori") == nama_kategori
-        and pesanan.get("status") != "batal"
+    terjual = hitung_terjual(
+        data, event.get("id"), nama_kategori
     )
 
     return max(0, kuota - terjual)
 
 
 def daftar_event_dengan_sisa(data):
-    """Mengembalikan event dengan total sisa kuota."""
+    """Menampilkan daftar event beserta sisa kuota."""
     daftar = []
 
     for event_asli in data.get("event", []):
@@ -38,11 +45,3 @@ def daftar_event_dengan_sisa(data):
         daftar.append(event)
 
     return daftar
-
-def hitung_terjual(data, event_id, kategori):
-    return sum(
-        int(pesanan.get("jumlah", 0))
-        for pesanan in data.get("pesanan", [])
-        if str(pesanan.get("event")) == str(event_id)
-        and pesanan.get("kategori") == kategori
-    )
